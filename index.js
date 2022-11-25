@@ -193,6 +193,18 @@ async function run() {
       const result = await productCollection.updateOne(filter, updateDock);
       res.send(result);
     });
+
+    // get reported products
+
+    app.get("/getReported", async (req, res) => {
+      const filter = {
+        reported: true,
+      };
+
+      const result = await productCollection.find(filter).toArray();
+
+      res.send(result);
+    });
   } catch {}
 }
 run().catch((err) => {
