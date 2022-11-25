@@ -261,6 +261,19 @@ async function run() {
       res.send({ verifyed, products });
     });
 
+    app.patch("/verifyBuyer/:email", async (req, res) => {
+      const userEmail = req.params.email;
+      const filter = {
+        email: userEmail,
+      };
+      const updatedDoc = {
+        $set: { isVerified: true },
+      };
+      const verifyed = await usersCollection.updateOne(filter, updatedDoc);
+
+      res.send(verifyed);
+    });
+
     app.delete("/delete-user/:email", async (req, res) => {
       const userEmail = req.params.email;
       const filter = {
