@@ -223,6 +223,54 @@ async function run() {
 
       res.send(allSeller);
     });
+    app.get("/all-buyer", async (req, res) => {
+      const filter = {
+        role: "buyer",
+      };
+      const allBuyer = await usersCollection.find(filter).toArray();
+
+      res.send(allBuyer);
+    });
+
+    app.patch("/verifySeller/:email", async (req, res) => {
+      const userEmail = req.params.email;
+      const filter = {
+        email: userEmail,
+      };
+      const updatedDoc = {
+        $set: { isVerified: true },
+      };
+      const verifyed = await usersCollection.updateOne(filter, updatedDoc);
+
+      // update there product data as well
+      const filterForProducdt = {
+        sellerEmail: userEmail,
+      };
+
+      const productUpdateDoc = {
+        $set: {
+          sellerverified: true,
+        },
+      };
+
+      const products = await productCollection.updateMany(
+        filterForProducdt,
+        productUpdateDoc
+      );
+
+      res.send({ verifyed, products });
+    });
+
+    app.delete("/delete-user/:email", async (req, res) => {
+      const userEmail = req.params.email;
+      const filter = {
+        email: userEmail,
+      };
+
+      const deletedUser = await usersCollection.deleteOne(filter);
+
+      res.send(deletedUser);
+    });
   } catch {}
 }
 run().catch((err) => {
