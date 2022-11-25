@@ -24,12 +24,24 @@ async function run() {
       .db("selNFT")
       .collection("productCollection");
     const usersCollection = client.db("selNFT").collection("users");
+    const bookingCollection = client.db("selNFT").collection("booking");
 
     // get top products
     app.get("/products/top", async (req, res) => {
       const coursor = await productCollection.find({}).limit(6).toArray();
       res.send(coursor);
     });
+    // get a single product
+
+    app.get("/product/:id", async (req, res) => {
+      const productID = req.params.id;
+      const filter = {
+        _id: ObjectId(productID),
+      };
+      const product = await productCollection.findOne(filter);
+      res.send(product);
+    });
+
     // get only categories
     app.get("/only-categories", async (req, res) => {
       const allProduct = await productCollection.find({}).toArray();
@@ -144,6 +156,27 @@ async function run() {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
+    });
+
+    // post an booking
+
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingCollection.insertOne(booking);
+
+      res.send(result);
+    });
+
+    // get user specific booking
+
+    app.get("/my-orders/:email", async (req, res) => {
+      const buyerEmailParams = req.params.email;
+      const filter = {
+        buyerEmail: buyerEmailParams,
+      };
+      const product = await bookingCollection.find(filter).toArray();
+      console.log(buyerEmailParams, product);
+      res.send(product);
     });
   } catch {}
 }
