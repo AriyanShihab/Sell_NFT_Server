@@ -178,6 +178,21 @@ async function run() {
       console.log(buyerEmailParams, product);
       res.send(product);
     });
+    // make a product reported
+    app.patch("/add-report/:id", async (req, res) => {
+      const productId = req.params.id;
+      const filter = {
+        _id: ObjectId(productId),
+      };
+      const updateDock = {
+        $set: {
+          reported: true,
+        },
+      };
+
+      const result = await productCollection.updateOne(filter, updateDock);
+      res.send(result);
+    });
   } catch {}
 }
 run().catch((err) => {
