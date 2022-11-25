@@ -205,6 +205,15 @@ async function run() {
 
       res.send(result);
     });
+
+    app.delete("/deleteReportedProduct/:id", async (req, res) => {
+      const productId = req.params.id;
+      const query = {
+        _id: ObjectId(productId),
+      };
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
   } catch {}
 }
 run().catch((err) => {
