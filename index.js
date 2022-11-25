@@ -214,6 +214,15 @@ async function run() {
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
+
+    app.get("/all-seller", async (req, res) => {
+      const filter = {
+        role: "seller",
+      };
+      const allSeller = await usersCollection.find(filter).toArray();
+
+      res.send(allSeller);
+    });
   } catch {}
 }
 run().catch((err) => {
