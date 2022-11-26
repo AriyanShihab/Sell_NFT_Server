@@ -11,7 +11,7 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.f57powx.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri);
+
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -19,9 +19,9 @@ const client = new MongoClient(uri, {
 });
 
 function verifyJWT(req, res, next) {
-  console.log(req.headers);
-  const token = req.headers.auth_token;
-  console.log(token);
+  console.log("jwt header", req.headers);
+  const token = req.headers.authtoken;
+  console.log("jwt token", token);
   if (!token) {
     return res.status(401).send({
       message: " vai please stop doing this, tumi token dao nai kan?",
@@ -64,8 +64,8 @@ async function run() {
       };
 
       const seller = await usersCollection.findOne(filter);
-      console.log(seller);
-      console.log(decodedEmail);
+      // console.log(seller);
+      // console.log(decodedEmail);
       if (!seller) {
         return res
           .status(403)
@@ -76,6 +76,30 @@ async function run() {
         return res
           .status(403)
           .send({ message: "vai tumi seller na, please seller how age " });
+      }
+
+      next();
+    };
+    const verifyAdmin = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const filter = {
+        email: decodedEmail,
+      };
+
+      const admin = await usersCollection.findOne(filter);
+      console.log(admin);
+
+      if (!admin) {
+        return res
+          .status(403)
+          .send({ message: "vai tomar app a kono admin e nai" });
+      }
+      console.log();
+
+      if (admin?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ message: "vai tumi admin na, please admin how age " });
       }
 
       next();
@@ -189,7 +213,7 @@ async function run() {
         updateDock,
         options
       );
-      console.log(result);
+
       res.send(result);
     });
 
@@ -202,7 +226,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/add-products", async (req, res) => {
+    app.post("/add-products", verifyJWT, verifySeller, async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
@@ -219,13 +243,13 @@ async function run() {
 
     // get user specific booking
 
-    app.get("/my-orders/:email", async (req, res) => {
+    app.get("/my-orders/:email", verifyJWT, async (req, res) => {
       const buyerEmailParams = req.params.email;
       const filter = {
         buyerEmail: buyerEmailParams,
       };
       const product = await bookingCollection.find(filter).toArray();
-      console.log(buyerEmailParams, product);
+
       res.send(product);
     });
     // make a product reported
@@ -246,7 +270,7 @@ async function run() {
 
     // get reported products
 
-    app.get("/getReported", async (req, res) => {
+    app.get("/getReported", verifyJWT, verifyAdmin, async (req, res) => {
       const filter = {
         reported: true,
       };
@@ -256,16 +280,21 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/deleteReportedProduct/:id", async (req, res) => {
-      const productId = req.params.id;
-      const query = {
-        _id: ObjectId(productId),
-      };
-      const result = await productCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/deleteReportedProduct/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const productId = req.params.id;
+        const query = {
+          _id: ObjectId(productId),
+        };
+        const result = await productCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
-    app.get("/all-seller", async (req, res) => {
+    app.get("/all-seller", verifyJWT, verifyAdmin, async (req, res) => {
       const filter = {
         role: "seller",
       };
@@ -273,7 +302,7 @@ async function run() {
 
       res.send(allSeller);
     });
-    app.get("/all-buyer", async (req, res) => {
+    app.get("/all-buyer", verifyJWT, verifyAdmin, async (req, res) => {
       const filter = {
         role: "buyer",
       };
@@ -282,47 +311,57 @@ async function run() {
       res.send(allBuyer);
     });
 
-    app.patch("/verifySeller/:email", async (req, res) => {
-      const userEmail = req.params.email;
-      const filter = {
-        email: userEmail,
-      };
-      const updatedDoc = {
-        $set: { isVerified: true },
-      };
-      const verifyed = await usersCollection.updateOne(filter, updatedDoc);
+    app.patch(
+      "/verifySeller/:email",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const userEmail = req.params.email;
+        const filter = {
+          email: userEmail,
+        };
+        const updatedDoc = {
+          $set: { isVerified: true },
+        };
+        const verifyed = await usersCollection.updateOne(filter, updatedDoc);
 
-      // update there product data as well
-      const filterForProducdt = {
-        sellerEmail: userEmail,
-      };
+        // update there product data as well
+        const filterForProducdt = {
+          sellerEmail: userEmail,
+        };
 
-      const productUpdateDoc = {
-        $set: {
-          sellerverified: true,
-        },
-      };
+        const productUpdateDoc = {
+          $set: {
+            sellerverified: true,
+          },
+        };
 
-      const products = await productCollection.updateMany(
-        filterForProducdt,
-        productUpdateDoc
-      );
+        const products = await productCollection.updateMany(
+          filterForProducdt,
+          productUpdateDoc
+        );
 
-      res.send({ verifyed, products });
-    });
+        res.send({ verifyed, products });
+      }
+    );
 
-    app.patch("/verifyBuyer/:email", async (req, res) => {
-      const userEmail = req.params.email;
-      const filter = {
-        email: userEmail,
-      };
-      const updatedDoc = {
-        $set: { isVerified: true },
-      };
-      const verifyed = await usersCollection.updateOne(filter, updatedDoc);
+    app.patch(
+      "/verifyBuyer/:email",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const userEmail = req.params.email;
+        const filter = {
+          email: userEmail,
+        };
+        const updatedDoc = {
+          $set: { isVerified: true },
+        };
+        const verifyed = await usersCollection.updateOne(filter, updatedDoc);
 
-      res.send(verifyed);
-    });
+        res.send(verifyed);
+      }
+    );
 
     app.delete("/delete-user/:email", async (req, res) => {
       const userEmail = req.params.email;
@@ -333,6 +372,22 @@ async function run() {
       const deletedUser = await usersCollection.deleteOne(filter);
 
       res.send(deletedUser);
+    });
+
+    // post an  google signin user
+
+    app.post("/googleUsers", async (req, res) => {
+      const user = req.body;
+      const filter = {
+        email: user.email,
+      };
+      const isExist = await usersCollection.findOne(filter);
+      if (isExist) {
+        return res.send({ message: "user already exist" });
+      }
+      const newUser = await usersCollection.insertOne(user);
+
+      res.send(newUser);
     });
   } catch {}
 }
