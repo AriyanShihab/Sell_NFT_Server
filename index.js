@@ -18,6 +18,29 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req, res, next) {
+  console.log(req.headers);
+  const token = req.headers.auth_token;
+  console.log(token);
+  if (!token) {
+    res.status(401).send({
+      message: " vai please stop doing this, tumi token dao nai kan?",
+    });
+  }
+
+  const splitedToken = token.split(" ")[1];
+
+  jwt.verify(splitedToken, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      res.status(403).send({
+        message: "vai tumi token diso, kintu somehow token ta valid na",
+      });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
+
 async function run() {
   try {
     const productCollection = client
@@ -111,7 +134,7 @@ async function run() {
 
     // get user specific product
 
-    app.get("/my-products", async (req, res) => {
+    app.get("/my-products", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const filter = {
         sellerEmail: email,
