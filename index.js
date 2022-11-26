@@ -23,7 +23,7 @@ function verifyJWT(req, res, next) {
   const token = req.headers.auth_token;
   console.log(token);
   if (!token) {
-    res.status(401).send({
+    return res.status(401).send({
       message: " vai please stop doing this, tumi token dao nai kan?",
     });
   }
@@ -32,7 +32,7 @@ function verifyJWT(req, res, next) {
 
   jwt.verify(splitedToken, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      res.status(403).send({
+      return res.status(403).send({
         message: "vai tumi token diso, kintu somehow token ta valid na",
       });
     }
@@ -54,6 +54,33 @@ async function run() {
       const coursor = await productCollection.find({}).limit(6).toArray();
       res.send(coursor);
     });
+
+    // berify seller
+
+    const verifySeller = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const filter = {
+        email: decodedEmail,
+      };
+
+      const seller = await usersCollection.findOne(filter);
+      console.log(seller);
+      console.log(decodedEmail);
+      if (!seller) {
+        return res
+          .status(403)
+          .send({ message: "vai tomar app a kono seller nai" });
+      }
+
+      if (seller?.role !== "seller") {
+        return res
+          .status(403)
+          .send({ message: "vai tumi seller na, please seller how age " });
+      }
+
+      next();
+    };
+
     // get a single product
 
     app.get("/product/:id", async (req, res) => {
@@ -134,7 +161,7 @@ async function run() {
 
     // get user specific product
 
-    app.get("/my-products", verifyJWT, async (req, res) => {
+    app.get("/my-products", verifyJWT, verifySeller, async (req, res) => {
       const email = req.query.email;
       const filter = {
         sellerEmail: email,
