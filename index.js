@@ -54,6 +54,11 @@ async function run() {
       const coursor = await productCollection.find({}).limit(6).toArray();
       res.send(coursor);
     });
+    // all-products
+    app.get("/products", async (req, res) => {
+      const coursor = await productCollection.find({}).toArray();
+      res.send(coursor);
+    });
 
     // berify seller
 
@@ -129,6 +134,13 @@ async function run() {
     });
     // get advertised product
 
+    app.get("/advertised/top", async (req, res) => {
+      const query = {
+        advertised: true,
+      };
+      const products = await productCollection.find(query).limit(3).toArray();
+      res.send(products);
+    });
     app.get("/advertised", async (req, res) => {
       const query = {
         advertised: true,
@@ -195,36 +207,46 @@ async function run() {
     });
 
     // make an product advertised
-    app.put("/makeAdvertised/:id", async (req, res) => {
-      const productId = req.params.id;
-      const filter = {
-        _id: ObjectId(productId),
-      };
-      const updateDock = {
-        $set: { advertised: true },
-      };
+    app.put(
+      "/makeAdvertised/:id",
+      verifyJWT,
+      verifySeller,
+      async (req, res) => {
+        const productId = req.params.id;
+        const filter = {
+          _id: ObjectId(productId),
+        };
+        const updateDock = {
+          $set: { advertised: true },
+        };
 
-      const options = {
-        upsert: true,
-      };
+        const options = {
+          upsert: true,
+        };
 
-      const result = await productCollection.updateOne(
-        filter,
-        updateDock,
-        options
-      );
+        const result = await productCollection.updateOne(
+          filter,
+          updateDock,
+          options
+        );
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
 
-    app.delete("/delete-product/:id", async (req, res) => {
-      const productId = req.params.id;
-      const query = {
-        _id: ObjectId(productId),
-      };
-      const result = await productCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/delete-product/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const productId = req.params.id;
+        const query = {
+          _id: ObjectId(productId),
+        };
+        const result = await productCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     app.post("/add-products", verifyJWT, verifySeller, async (req, res) => {
       const product = req.body;
